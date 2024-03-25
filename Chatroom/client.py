@@ -12,13 +12,17 @@ class Send_Thread(threading.Thread):
         self.name = name
 
     def run(self):
+        # /USER: send name
+        self.sock.send(bytes('/USER ' + self.name, 'UTF-8'))
+
+        # send msg
         while True:
             try:
                 msg = input("> ")
             except EOFError:
                 break
             if msg != '':
-                data = bytes(json.dumps((self.name, msg)), 'UTF-8')
+                data = bytes(msg, 'UTF-8')
                 self.sock.send(data)
         self.sock.close()
 
@@ -35,7 +39,7 @@ class Recv_Thread(threading.Thread):
                 data = self.sock.recv(MAXBUF)
                 if data == b'':
                     break
-                print(data.decode('UTF-8'))
+                print(data.decode())
             except EOFError:
                 pass
 

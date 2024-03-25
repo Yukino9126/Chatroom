@@ -27,19 +27,21 @@ class Thread(threading.Thread):
                     data = self.sock.recv(MAXBUF)
                     if data == b'':
                         break
-                    name, msg = json.loads(data.decode())
+                    msg = data.decode()
                     if msg[0] == '/':
                         if msg[1:5] == 'QUIT':
                             print('QUIT')
                         elif msg[1:5] == 'USER':
-                            Thread.users[self.sockname] = msg[5:].strip()
+                            self.username = msg[5:].strip()
+                            Thread.users[self.sockname] = self.username
+                            continue
                         elif msg[1:4] == 'WHO':
-                            print(Thread.users)
-                    print(f'{name}: {msg}')
+                            # self.sock.send(bytes(json.dumps(Thread.users), 'UTF-8'))
+                            continue
                     for i in Thread.threading_list:
                         if i != threading.current_thread():
-                            i.msg_queue.put(json.dumps((self.name, msg)))
-                            print(json.dumps((self.name, msg)))
+                            i.msg_queue.put(json.dumps((self.username, msg)))
+                            print(json.dumps((self.username, msg)))
                 except socket.timeout:
                     while not self.msg_queue.empty():
                         self.sock.send(bytes(self.msg_queue.get(), 'UTF-8'))
