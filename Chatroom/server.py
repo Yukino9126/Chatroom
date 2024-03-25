@@ -1,11 +1,16 @@
 import threading
 import socket
 import json
+import queue
+from datetime import datetime
 MAXBUF = 65535
 
 class Thread(threading.Thread):
 
+    username = ''
     users = {}
+    threading_list = []
+    msg_queue = queue.Queue()
 
     def __init__(self, newsock, sockname):
         threading.Thread.__init__(self)
@@ -14,27 +19,37 @@ class Thread(threading.Thread):
         Thread.users[sockname] = ''
 
     def run(self):
-        self.sock.settimeout(1.0)
-        while True:
-            try:
-                data = self.sock.recv(MAXBUF)
-                if data == b'':
-                    break
-                name, msg = json.loads(data.decode())
-                if msg[0] == '/':
-                    if msg[1:5] == 'QUIT':
-                        print('QUIT')
-                    elif msg[1:5] == 'USER':
-                        Thread.users[self.sockname] = msg[5:].strip()
-                    elif msg[1:4] == 'WHO':
-                        print(Thread.users)
-                print(f'{name}: {msg}')
-            except socket.timeout:
-                self.sock.send(b'AAA')
-        self.sock.close()
-        Thread.users.pop(self.sockname)
+        # try:
+            Thread.threading_list.append(threading.current_thread())
+            self.sock.settimeout(1.0)
+            while True:
+                try:
+                    data = self.sock.recv(MAXBUF)
+                    if data == b'':
+                        break
+                    name, msg = json.loads(data.decode())
+                    if msg[0] == '/':
+                        if msg[1:5] == 'QUIT':
+                            print('QUIT')
+                        elif msg[1:5] == 'USER':
+                            Thread.users[self.sockname] = msg[5:].strip()
+                        elif msg[1:4] == 'WHO':
+                            print(Thread.users)
+                    print(f'{name}: {msg}')
+                    for i in Thread.threading_list:
+                        if i != threading.current_thread():
+                            i.msg_queue.put(json.dumps((self.name, msg)))
+                            print(json.dumps((self.name, msg)))
+                except socket.timeout:
+                    while not self.msg_queue.empty():
+                        self.sock.send(bytes(self.msg_queue.get(), 'UTF-8'))
+            self.sock.close()
+            Thread.users.pop(self.sockname)
+        # except:
+        #     pass
 
 def server(interface, port):
+    # socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((interface, port))

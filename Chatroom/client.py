@@ -35,7 +35,7 @@ class Recv_Thread(threading.Thread):
                 data = self.sock.recv(MAXBUF)
                 if data == b'':
                     break
-                print(data.decode())
+                print(data.decode('UTF-8'))
             except EOFError:
                 pass
 
