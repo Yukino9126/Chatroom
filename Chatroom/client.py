@@ -12,20 +12,20 @@ class Send_Thread(threading.Thread):
         self.name = name
 
     def run(self):
-        # /USER: send name
-        self.sock.send(bytes('/USER ' + self.name, 'UTF-8'))
+        self._exc = None
+        try:
+            # Send username
+            self.sock.send(bytes('/USER ' + self.name, 'UTF-8'))
 
-        # send msg
-        while True:
-            try:
-                msg = input("> ")
-            except EOFError:
-                break
-            if msg != '':
-                data = bytes(msg, 'UTF-8')
-                self.sock.send(data)
-        self.sock.close()
-
+            # Send msg
+            while True:
+                msg = input(f"{'':>10s} > ")
+                if msg != '':
+                    data = bytes(msg, 'UTF-8')
+                    self.sock.send(data)
+        except (KeyboardInterrupt, EOFError):
+            print('\nClient Disconnect')
+            return
 
 class Recv_Thread(threading.Thread):
 
@@ -34,24 +34,35 @@ class Recv_Thread(threading.Thread):
         self.sock = sock
 
     def run(self):
-        while True:
-            try:
+        try:
+            while True:
+                # Recv
                 data = self.sock.recv(MAXBUF)
                 if data == b'':
-                    break
-                print(data.decode())
-            except EOFError:
-                pass
+                    print('\nServer Disconnect')
+                    return
+                # Display
+                user, msg = json.loads(data.decode())
+                print(f'\n{user:>10s} > {msg}')
+        except (KeyboardInterrupt, EOFError):
+            return
 
 def client(host, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.connect((host, port))
 
-    send = Send_Thread(sock, input('Your name? '))
-    recv = Recv_Thread(sock)
-    send.start()
-    recv.start()
+    try:
+        send = Send_Thread(sock, input('Your name? '))
+        recv = Recv_Thread(sock)
+        send.start()
+        recv.start()
+
+    except (KeyboardInterrupt, EOFError):
+        send.join()
+        recv.join()
+        print('Connetion interrupted.')
+        sock.close()
 
 if __name__ == '__main__':
     client('127.0.0.1', 20000)

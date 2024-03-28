@@ -9,46 +9,70 @@ class Thread(threading.Thread):
 
     username = ''
     users = {}
-    threading_list = []
-    msg_queue = queue.Queue()
+    msg_queue = {} # sockname : queue.Queue()
 
     def __init__(self, newsock, sockname):
+        # init
         threading.Thread.__init__(self)
+        # sock
         self.sock = newsock
-        self.sockname = sockname
-        Thread.users[sockname] = ''
+        self.sock.settimeout(1.0)
+        # user info
+        self.sockname = str(sockname)
+        Thread.users[self.sockname] = ''
+        Thread.msg_queue[self.sockname] = queue.Queue()
+        print(f'[INFO] {self.sockname}: Connected!')
 
     def run(self):
-        # try:
-            Thread.threading_list.append(threading.current_thread())
-            self.sock.settimeout(1.0)
-            while True:
-                try:
-                    data = self.sock.recv(MAXBUF)
-                    if data == b'':
+        # Send / Recv
+        while True:
+            # Recv Data
+            try:
+                data = self.sock.recv(MAXBUF)
+                if data == b'':
+                    break
+                msg = data.decode()
+
+                # ----- Handle ----- #
+                # slash command
+                if msg[0] == '/':
+                    if msg[1:5] == 'QUIT':   # Stop the connection and send the msg
+                        self.new_msg(msg[5:].strip())
                         break
-                    msg = data.decode()
-                    if msg[0] == '/':
-                        if msg[1:5] == 'QUIT':
-                            print('QUIT')
-                        elif msg[1:5] == 'USER':
-                            self.username = msg[5:].strip()
-                            Thread.users[self.sockname] = self.username
-                            continue
-                        elif msg[1:4] == 'WHO':
-                            # self.sock.send(bytes(json.dumps(Thread.users), 'UTF-8'))
-                            continue
-                    for i in Thread.threading_list:
-                        if i != threading.current_thread():
-                            i.msg_queue.put(json.dumps((self.username, msg)))
-                            print(json.dumps((self.username, msg)))
-                except socket.timeout:
-                    while not self.msg_queue.empty():
-                        self.sock.send(bytes(self.msg_queue.get(), 'UTF-8'))
-            self.sock.close()
-            Thread.users.pop(self.sockname)
-        # except:
-        #     pass
+                    elif msg[1:5] == 'USER': # Modify the username and the list of online users
+                        newname = msg[5:].strip()
+                        print(f'[INFO] {self.sockname}: {self.username} -> {newname}')
+                        self.username = newname
+                        Thread.users[self.sockname] = self.username
+                    elif msg[1:4] == 'WHO':  # Send the list of online users
+                        print(f'[INFO] {self.sockname}: {self.username} requested the list of online users.')
+                        self.sock.send(bytes(json.dumps(('*SERVER*', Thread.users)), 'UTF-8'))
+                        print(Thread.users)
+                # General Msg
+                else:
+                    self.new_msg(msg)
+                # ------------------ #
+            # Send
+            except socket.timeout:
+                self.get_msg()
+
+        # Delete
+        print(f'[INFO] {self.sockname}: {self.username} left.')
+        self.sock.close()
+        Thread.users.pop(self.sockname)
+        Thread.msg_queue.pop(self.sockname)
+
+    def new_msg(self, msg):
+        print(f'{self.username:>10s} > {msg}')
+        for i in Thread.msg_queue:
+            if i != self.sockname:
+                Thread.msg_queue[i].put(msg)
+
+    def get_msg(self):
+        msgq = Thread.msg_queue[self.sockname]
+        while not msgq.empty():
+            self.sock.send(bytes(json.dumps((self.username, msgq.get())), 'UTF-8'))
+
 
 def server(interface, port):
     # socket
@@ -58,10 +82,12 @@ def server(interface, port):
     sock.listen(1)
     print('Listening at', sock.getsockname())
 
-    while True:
-        try:
+    try:
+        while True:
             newsock, sockname = sock.accept()
             thread = Thread(newsock, sockname)
+            thread.daemon = True
             thread.start()
-        except EOFError: # TODO
-            break
+    except (KeyboardInterrupt, EOFError): # TODO
+        print('Stop')
+        exit()
