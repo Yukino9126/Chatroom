@@ -7,8 +7,7 @@ MAXBUF = 65535
 
 class Thread(threading.Thread):
 
-    username = ''
-    users = {}
+    users = {}     # sockname : username
     msg_queue = {} # sockname : queue.Queue()
 
     def __init__(self, newsock, sockname):
@@ -18,6 +17,7 @@ class Thread(threading.Thread):
         self.sock = newsock
         self.sock.settimeout(1.0)
         # user info
+        self.username = ''
         self.sockname = str(sockname)
         Thread.users[self.sockname] = ''
         Thread.msg_queue[self.sockname] = queue.Queue()
@@ -47,7 +47,6 @@ class Thread(threading.Thread):
                     elif msg[1:4] == 'WHO':  # Send the list of online users
                         print(f'[INFO] {self.sockname}: {self.username} requested the list of online users.')
                         self.sock.send(bytes(json.dumps(('*SERVER*', Thread.users)), 'UTF-8'))
-                        print(Thread.users)
                 # General Msg
                 else:
                     self.new_msg(msg)
