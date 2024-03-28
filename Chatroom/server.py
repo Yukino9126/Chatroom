@@ -66,12 +66,12 @@ class Thread(threading.Thread):
         print(f'{self.username:>10s} > {msg}')
         for i in Thread.msg_queue:
             if i != self.sockname:
-                Thread.msg_queue[i].put(msg)
+                Thread.msg_queue[i].put(json.dumps((self.username, msg)))
 
     def get_msg(self):
         msgq = Thread.msg_queue[self.sockname]
         while not msgq.empty():
-            self.sock.send(bytes(json.dumps((self.username, msgq.get())), 'UTF-8'))
+            self.sock.send(bytes(msgq.get(), 'UTF-8'))
 
 
 def server(interface, port):
