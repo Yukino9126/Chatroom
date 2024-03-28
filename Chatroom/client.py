@@ -53,16 +53,11 @@ def client(host, port):
     sock.connect((host, port))
 
     try:
-        send = Send_Thread(sock, input('Your name? '))
+        send = Send_Thread(sock, input('Your name?   '))
         recv = Recv_Thread(sock)
         send.start()
         recv.start()
 
     except (KeyboardInterrupt, EOFError):
-        send.join()
-        recv.join()
         print('Connetion interrupted.')
         sock.close()
-
-if __name__ == '__main__':
-    client('127.0.0.1', 20000)
