@@ -21,7 +21,7 @@ class Thread(threading.Thread):
         self.sockname = str(sockname)
         Thread.users[self.sockname] = ''
         Thread.msg_queue[self.sockname] = queue.Queue()
-        print(f'[INFO] {self.sockname}: Connected!')
+        print(f'[SOCK] {self.sockname}: Connected!')
 
     def run(self):
         # Send / Recv
@@ -56,7 +56,7 @@ class Thread(threading.Thread):
                 self.get_msg()
 
         # Delete
-        print(f'[INFO] {self.sockname}: {self.username} left.')
+        print(f'[SOCK] {self.sockname}: {self.username} left.')
         self.sock.close()
         Thread.users.pop(self.sockname)
         Thread.msg_queue.pop(self.sockname)
@@ -83,10 +83,11 @@ def server(interface, port):
 
     try:
         while True:
+            print('[SOCK] Waiting to accept a new connection')
             newsock, sockname = sock.accept()
             thread = Thread(newsock, sockname)
             thread.daemon = True
             thread.start()
-    except (KeyboardInterrupt, EOFError): # TODO
-        print('Stop')
-        exit()
+    except KeyboardInterrupt:
+        pass
+    sock.close()
