@@ -2,7 +2,6 @@ import threading
 import socket
 import json
 import queue
-from datetime import datetime
 MAXBUF = 65535
 
 class Thread(threading.Thread):

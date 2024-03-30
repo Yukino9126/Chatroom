@@ -1,7 +1,6 @@
 import threading
 import socket
 import json
-from sys import stdin
 MAXBUF = 65535
 
 class Send_Thread(threading.Thread):
@@ -31,7 +30,7 @@ class Send_Thread(threading.Thread):
             except socket.timeout:
                 if stop_flag == True:
                     break
-                
+
         stop_flag = True
         return
     
