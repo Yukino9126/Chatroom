@@ -1,7 +1,7 @@
 import threading
 import socket
 import json
-import time
+from sys import stdin
 MAXBUF = 65535
 
 class Send_Thread(threading.Thread):
@@ -12,20 +12,30 @@ class Send_Thread(threading.Thread):
         self.name = name
 
     def run(self):
-        self._exc = None
-        try:
-            # Send username
-            self.sock.send(bytes('/USER ' + self.name, 'UTF-8'))
+        # Send username
+        self.sock.send(bytes('/USER ' + self.name, 'UTF-8'))
 
-            # Send msg
-            while True:
-                msg = input(f"{'':>10s} > ")
-                if msg != '':
-                    data = bytes(msg, 'UTF-8')
-                    self.sock.send(data)
-        except (KeyboardInterrupt, EOFError):
-            print('\nClient Disconnect')
-            return
+        # Send msg
+        while True:
+            msg = input(f"{'':>10s} > ")
+            if msg[0:6] == '/HELP': # Print the slash command
+                self.help_info()
+                continue
+            if msg != '':           # Send the msg
+                data = bytes(msg, 'UTF-8')
+                self.sock.send(data)
+            if msg[0:6] == '/QUIT': # Stop the thread
+                break
+
+        return
+    
+    def help_info(self):
+        print()
+        print('/USER <username>  will specify a username of the connecting client')
+        print('/WHO              will return a list of users logged into the server.')
+        print('/QUIT [<msg>]     will end a client session. The server will close the socket to this client.')
+        print()
+
 
 class Recv_Thread(threading.Thread):
 
@@ -34,20 +44,21 @@ class Recv_Thread(threading.Thread):
         self.sock = sock
 
     def run(self):
-        try:
-            while True:
-                # Recv
-                data = self.sock.recv(MAXBUF)
-                if data == b'':
-                    print('\nServer Disconnect')
-                    return
-                # Display
-                user, msg = json.loads(data.decode())
-                print(f'\n{user:>10s} > {msg}')
-        except (KeyboardInterrupt, EOFError):
-            return
+
+        while True:
+            # Recv
+            data = self.sock.recv(MAXBUF)
+            if data == b'':
+                break
+
+            # Display
+            user, msg = json.loads(data.decode())
+            print(f'\n{user:>10s} > {msg}')
+
+        return
 
 def client(host, port):
+    # socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.connect((host, port))
@@ -58,6 +69,7 @@ def client(host, port):
         send.start()
         recv.start()
 
-    except (KeyboardInterrupt, EOFError):
-        print('Connetion interrupted.')
-        sock.close()
+    except KeyboardInterrupt:
+        pass
+        
+    sock.close()
