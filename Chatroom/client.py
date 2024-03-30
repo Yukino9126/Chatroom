@@ -17,16 +17,22 @@ class Send_Thread(threading.Thread):
 
         # Send msg
         while True:
-            msg = input(f"{'':>10s} > ")
-            if msg[0:6] == '/HELP': # Print the slash command
-                self.help_info()
-                continue
-            if msg != '':           # Send the msg
-                data = bytes(msg, 'UTF-8')
-                self.sock.send(data)
-            if msg[0:6] == '/QUIT': # Stop the thread
-                break
+            try:
+                msg = input(f"{'':>10s} > ")
+                if msg[0:6] == '/HELP': # Print the slash command
+                    self.help_info()
+                    continue
+                if msg != '':           # Send the msg
+                    data = bytes(msg, 'UTF-8')
+                    self.sock.send(data)
+                if msg[0:6] == '/QUIT': # Stop the thread
+                    break
 
+            except socket.timeout:
+                if stop_flag == True:
+                    break
+                
+        stop_flag = True
         return
     
     def help_info(self):
@@ -46,30 +52,44 @@ class Recv_Thread(threading.Thread):
     def run(self):
 
         while True:
-            # Recv
-            data = self.sock.recv(MAXBUF)
-            if data == b'':
-                break
+            try:
+                # Recv
+                data = self.sock.recv(MAXBUF)
+                if data == b'':
+                    break
 
-            # Display
-            user, msg = json.loads(data.decode())
-            print(f'\n{user:>10s} > {msg}')
+                # Display
+                user, msg = json.loads(data.decode())
+                print(f'\n{user:>10s} > {msg}')
 
+            except socket.timeout:
+                if stop_flag == True:
+                    break
+
+        stop_flag = True
         return
 
 def client(host, port):
     # socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.settimeout(1)
     sock.connect((host, port))
+    # flag
+    global stop_flag
+    stop_flag = False
 
     try:
         send = Send_Thread(sock, input('Your name?   '))
         recv = Recv_Thread(sock)
         send.start()
         recv.start()
+        send.join()
+        recv.join()
 
-    except KeyboardInterrupt:
-        pass
+    except (KeyboardInterrupt, EOFError):
+        stop_flag = True
         
+    send.join()
+    recv.join()
     sock.close()
