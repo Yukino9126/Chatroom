@@ -1,5 +1,6 @@
-# PyNetwork2024
-## `Chatroom/` IRC - Internet Relay Chat
+#  Online Chatroom (IRC - Internet Relay Chat)
+- 「Python 網路程式設計」課程專題 (2024)
+## Requirements
 - Simplified Scenario - All Users in the Same Channel
 - In this exercise, we are going to implement a simplified IRC server/client. For more technical details, please refer to RFC 1459.
 - **Client**
@@ -11,3 +12,15 @@
     - `/USER <username>` will specify a username of the connecting client.
     - `/WHO` will return a list of users logged into the server.
     - `/QUIT [<msg>]` will end a client session. The server will close the socket to this client.
+   
+## Usage
+- usage: `main.py [-h] [-p PORT] {client,server} host`
+
+- positional arguments:
+  - `{client,server}` which role to play
+  - `host` interface the server listens at; host the client sends to
+
+- options:
+  - `-h`, `--help` show this help message and exit
+  - `-p PORT` IRC port (default 6667)
+
