@@ -2,6 +2,7 @@ import threading
 import socket
 import json
 import queue
+from datetime import datetime
 MAXBUF = 65535
 
 class Thread(threading.Thread):
@@ -45,7 +46,9 @@ class Thread(threading.Thread):
                         Thread.users[self.sockname] = self.username
                     elif msg[1:4] == 'WHO':  # Send the list of online users
                         print(f'[INFO] {self.sockname}: {self.username} requested the list of online users.')
-                        self.sock.send(bytes(json.dumps(('*SERVER*', Thread.users)), 'UTF-8'))
+                        self.sock.send(bytes(json.dumps((datetime.now().strftime("(%X)"), '*SERVER*', Thread.users)), 'UTF-8'))
+                    else:
+                        self.new_msg(msg)
                 # General Msg
                 else:
                     self.new_msg(msg)
@@ -61,10 +64,11 @@ class Thread(threading.Thread):
         Thread.msg_queue.pop(self.sockname)
 
     def new_msg(self, msg):
-        print(f'{self.username:>10s} > {msg}')
+        time = datetime.now().strftime("(%X)")
+        print(f'{time} {self.username:>10s} > {msg}')
         for i in Thread.msg_queue:
             if i != self.sockname:
-                Thread.msg_queue[i].put(json.dumps((self.username, msg)))
+                Thread.msg_queue[i].put(json.dumps((time, self.username, msg)))
 
     def get_msg(self):
         msgq = Thread.msg_queue[self.sockname]

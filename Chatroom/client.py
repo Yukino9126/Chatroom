@@ -11,13 +11,14 @@ class Send_Thread(threading.Thread):
         self.name = name
 
     def run(self):
+        global stop_flag
         # Send username
         self.sock.send(bytes('/USER ' + self.name, 'UTF-8'))
 
         # Send msg
         while True:
             try:
-                msg = input(f"{'':>10s} > ")
+                msg = input(f"{'':>21s} > ")
                 if msg[0:6] == '/HELP': # Print the slash command
                     self.help_info()
                     continue
@@ -30,6 +31,8 @@ class Send_Thread(threading.Thread):
             except socket.timeout:
                 if stop_flag == True:
                     break
+            except EOFError:
+                break
 
         stop_flag = True
         return
@@ -49,6 +52,7 @@ class Recv_Thread(threading.Thread):
         self.sock = sock
 
     def run(self):
+        global stop_flag
 
         while True:
             try:
@@ -58,8 +62,8 @@ class Recv_Thread(threading.Thread):
                     break
 
                 # Display
-                user, msg = json.loads(data.decode())
-                print(f'\n{user:>10s} > {msg}')
+                time, user, msg = json.loads(data.decode())
+                print(f'\n{time} {user:>10s} > {msg}')
 
             except socket.timeout:
                 if stop_flag == True:
@@ -77,18 +81,19 @@ def client(host, port):
     # flag
     global stop_flag
     stop_flag = False
+    # thread
+    send = Send_Thread(sock, input('Your name?   '))
+    recv = Recv_Thread(sock)
 
     try:
-        send = Send_Thread(sock, input('Your name?   '))
-        recv = Recv_Thread(sock)
         send.start()
         recv.start()
         send.join()
         recv.join()
+        sock.close()
 
     except (KeyboardInterrupt, EOFError):
         stop_flag = True
-        
-    send.join()
-    recv.join()
-    sock.close()
+        send.join()
+        recv.join()
+        sock.close()
