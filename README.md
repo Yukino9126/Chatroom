@@ -1,4 +1,4 @@
-#  Online Chatroom (IRC - Internet Relay Chat)
+#  Chatroom (IRC - Internet Relay Chat)
 - 「Python 網路程式設計」課程專題 (2024)
 ## Requirements
 - Simplified Scenario - All Users in the Same Channel
